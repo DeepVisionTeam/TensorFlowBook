@@ -87,3 +87,6 @@ ENV/
 
 # Rope project settings
 .ropeproject
+.idea/
+Would skip repository Titanic/
+Would skip repository neural_style/
