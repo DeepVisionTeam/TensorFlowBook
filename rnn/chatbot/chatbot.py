@@ -34,7 +34,7 @@ class Chatbot():
         self.vocab, self.rev_vocab = data_utils.initialize_vocabulary(vocab_path)
 
     def create_model(self, session, model_dir, forward_only):
-        """Create translation model and initialize or load parameters in session."""
+        """Create conversation model and initialize or load parameters in session."""
         model = seq2seq_model.Seq2SeqModel(
             FLAGS.vocab_size, FLAGS.vocab_size, _buckets,
             FLAGS.size, FLAGS.num_layers, FLAGS.max_gradient_norm, FLAGS.batch_size,
@@ -74,7 +74,7 @@ class Chatbot():
         if data_utils.EOS_ID in outputs:
             outputs = outputs[:outputs.index(data_utils.EOS_ID)]
 
-        # Print out French sentence corresponding to outputs.
+        # Print out response sentence corresponding to outputs.
         answer = " ".join([self.rev_vocab[output] for output in outputs])
         if data_utils._UNK in answer:
             answer = random.choice(UNK_TOKEN_REPLACEMENT)
@@ -85,6 +85,6 @@ class Chatbot():
         self.session.close()
 
 if __name__ == "__main__":
-    m = Chatbot(SEQ2SEQ_MODEL_DIR)
+    m = Chatbot(SEQ2SEQ_MODEL_DIR + '/train/')
     response = m.generate_answer('我知道你不知道我知道你不知道我说的是什么意思')
     print response

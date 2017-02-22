@@ -46,7 +46,7 @@ class FLAGS(object):
     data_dir = SEQ2SEQ_MODEL_DIR  # Data directory
     train_dir = SEQ2SEQ_MODEL_DIR + "/train"  # Training directory.
     max_train_data_size = 0  # Limit on the size of training data (0: no limit).
-    steps_per_checkpoint = 200  # How many training steps to do per checkpoint.
+    steps_per_checkpoint = 2  # How many training steps to do per checkpoint.
     decode = False  # Set to True for interactive decoding.
     self_test = False  # Run a self-test if this is set to True.
 
@@ -77,7 +77,7 @@ def read_data(source_path, target_path, max_size=None):
             counter = 0
             while source and target and (not max_size or counter < max_size):
                 counter += 1
-                if counter % 100000 == 0:
+                if counter % 1000 == 0:
                     print("  reading data line %d" % counter)
                     sys.stdout.flush()
                 source_ids = [int(x) for x in source.split()]
@@ -115,6 +115,7 @@ def train():
             FLAGS.data_dir, FLAGS.vocab_size)
     vocab_path = os.path.join(FLAGS.data_dir, "vocab%d" % FLAGS.vocab_size)
     vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
+
     with tf.Session() as sess:
         # Create model.
         print("Creating %d layers of %d units." % (FLAGS.num_layers, FLAGS.size))
@@ -124,6 +125,7 @@ def train():
                % FLAGS.max_train_data_size)
         dev_set = read_data(enquiry_dev, answer_dev)
         train_set = read_data(enquiry_train, answer_train, FLAGS.max_train_data_size)
+
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(_buckets))]
         train_total_size = float(sum(train_bucket_sizes))
         # A bucket scale is a list of increasing numbers from 0 to 1 that we'll use
@@ -131,7 +133,9 @@ def train():
         # the size if i-th training bucket, as used later.
         train_buckets_scale = [sum(train_bucket_sizes[:i + 1]) / train_total_size
                                for i in xrange(len(train_bucket_sizes))]
+
         # This is the training loop.
+        print ("Start training ...")
         step_time, loss = 0.0, 0.0
         current_step = 0
         previous_losses = []
@@ -196,7 +200,6 @@ def train():
                         # If there is an EOS symbol in outputs, cut them at that point.
                         # if data_utils.EOS_ID in outputs:
                         #    outputs = outputs[:outputs.index(data_utils.EOS_ID)]
-                        #  out French sentence corresponding to outputs.
                         log_info = '%s, answer: %s' % (log_info, "".join([rev_vocab[output] for output in outputs]))
                         print(log_info)
                         #_LOGGER.info(log_info)
@@ -235,24 +238,9 @@ def decode():
             # If there is an EOS symbol in outputs, cut them at that point.
             if data_utils.EOS_ID in outputs:
                 outputs = outputs[:outputs.index(data_utils.EOS_ID)]
-            # Print out French sentence corresponding to outputs.
+            # Print out response sentence corresponding to outputs.
             print(" ".join([rev_vocab[output] for output in outputs]))
             print ("answer perplexity: %s " % average_perplexity)
             print("> ", end="")
             sys.stdout.flush()
             sentence = sys.stdin.readline()
-
-
-
-
-def main(_):
-    if FLAGS.self_test:
-        self_test()
-    elif FLAGS.decode:
-        decode()
-    else:
-        train()
-
-
-if __name__ == "__main__":
-    tf.app.run()
