@@ -1,10 +1,11 @@
 # coding=utf8
 import logging
-import os
 import random
+
 import numpy as np
 import tensorflow as tf
-from seq2seq_conversation_model import seq2seq_model, data_utils
+
+from seq2seq_conversation_model import seq2seq_model
 
 _LOGGER = logging.getLogger('track')
 
@@ -30,10 +31,11 @@ def test_conversation_model():
         for _ in xrange(5):  # Train the fake model for 5 steps.
             bucket_id = random.choice([0, 1])
             encoder_inputs, decoder_inputs, target_weights = model.get_batch(
-                    data_set, bucket_id)
+                data_set, bucket_id)
             model.step(sess, encoder_inputs, decoder_inputs, target_weights,
                        bucket_id, False)
-        a, b, c = model.step(sess, encoder_inputs, decoder_inputs, target_weights,
+        a, b, c = model.step(sess, encoder_inputs, decoder_inputs,
+                             target_weights,
                              bucket_id, True)
         print (c)
         c = np.array(c)

@@ -1,5 +1,7 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import absolute_import, division, print_function
+
 import random
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.rnn.python.ops import core_rnn
@@ -12,9 +14,7 @@ def build_data(n):
     for i in range(0, 2000):
         k = random.uniform(1, 50)
 
-        x = []
-        for j in range(0, n):
-            x.append([np.sin(k + j)])
+        x = [[np.sin(k + j)] for j in range(0, n)]
         y = [np.sin(k + n)]
 
         # x[i] = sin(k + i) (i = 0, 1, ..., n-1)
@@ -29,40 +29,11 @@ def build_data(n):
     return (train_x, train_y, test_x, test_y)
 
 
-def init_weights(shape):
-    return tf.Variable(tf.random_normal(shape, stddev=0.01))
-
-
-# X, shape: (batch_size, time_step_size, vector_size)
-# W, shape: lstm_size * 1
-# B, shape: lstm_size
-def seq_predict_model(X, W, B, time_step_size, vector_size, lstm_size):
-    # X, shape: (batch_size, time_step_size, vector_size)
-    X = tf.transpose(X, [1, 0, 2])
-    # X, shape: (time_step_size, batch_size, vector_size)
-    X = tf.reshape(X, [-1, vector_size])
-    # X, shape: (time_step_size * batch_size, vector_size)
-    X = tf.split(X, time_step_size, 0)
-    # X, array[time_step_size], shape: (batch_size, vector_size)
-
-    # LSTM model with state_size = lstm_size
-    lstm = core_rnn_cell.BasicLSTMCell(num_units=lstm_size,
-                                       forget_bias=1.0,
-                                       state_is_tuple=True)
-    # outputs, shape: (batch_size, lstm_size)
-    outputs, _states = core_rnn.static_rnn(lstm, X, dtype=tf.float32)
-
-    # Linear activation
-    return tf.matmul(outputs[-1], W) + B, lstm.state_size
-
-
 length = 10
-lstm_size = 20
 time_step_size = length
 vector_size = 1
 batch_size = 10
 test_size = 10
-
 
 # build data
 (train_x, train_y, test_x, test_y) = build_data(length)
@@ -72,11 +43,29 @@ X = tf.placeholder("float", [None, length, vector_size])
 Y = tf.placeholder("float", [None, 1])
 
 # get lstm_size and output predicted value
-W = init_weights([lstm_size, 1])
-B = init_weights([1])
+W = tf.Variable(tf.random_normal([10, 1], stddev=0.01))
+B = tf.Variable(tf.random_normal([1], stddev=0.01))
 
-predicted_y, _ = seq_predict_model(X, W, B, time_step_size, vector_size, lstm_size)
-loss = tf.square(tf.subtract(Y, predicted_y))
+
+def seq_predict_model(X, w, b, time_step_size, vector_size):
+    # input X shape: [batch_size, time_step_size, vector_size]
+    # transpose X to [time_step_size, batch_size, vector_size]
+    X = tf.transpose(X, [1, 0, 2])
+    # reshape X to [time_step_size * batch_size, vector_size]
+    X = tf.reshape(X, [-1, vector_size])
+    # split X, array[time_step_size], shape: [batch_size, vector_size]
+    X = tf.split(X, time_step_size, 0)
+
+    cell = core_rnn_cell.BasicRNNCell(num_units=10)
+    initial_state = tf.zeros([batch_size, cell.state_size])
+    outputs, _states = core_rnn.static_rnn(cell, X, initial_state=initial_state)
+
+    # Linear activation
+    return tf.matmul(outputs[-1], w) + b, cell.state_size
+
+
+pred_y, _ = seq_predict_model(X, W, B, time_step_size, vector_size)
+loss = tf.square(tf.subtract(Y, pred_y))
 train_op = tf.train.GradientDescentOptimizer(0.001).minimize(loss)
 
 with tf.Session() as sess:
@@ -99,7 +88,13 @@ with tf.Session() as sess:
         y_value = test_y[test_indices]
 
         # eval in validation set
-        val_loss = np.mean(sess.run(loss, feed_dict={X: x_value, Y: y_value}))
+        val_loss = np.mean(sess.run(loss,
+                                    feed_dict={X: x_value, Y: y_value}))
         print('Run %s' % i, val_loss)
-    # test
-    print('Test:', np.mean(sess.run(loss, feed_dict={X: test_x, Y: test_y})))
+
+    for b in range(0, len(test_x), test_size):
+        x_value = test_x[b: b + test_size]
+        y_value = test_y[b: b + test_size]
+        pred = sess.run(pred_y, feed_dict={X: x_value})
+        for i in range(len(pred)):
+            print(pred[i], y_value[i], pred[i] - y_value[i])

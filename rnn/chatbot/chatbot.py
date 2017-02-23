@@ -65,6 +65,7 @@ class Chatbot():
     """
     answer an enquiry using trained seq2seq model
     """
+
     def __init__(self, model_dir):
         # Create model and load parameters.
         self.session = tf.InteractiveSession()
@@ -78,8 +79,10 @@ class Chatbot():
         """Create conversation model and initialize or load parameters in session."""
         model = seq2seq_model.Seq2SeqModel(
             FLAGS.vocab_size, FLAGS.vocab_size, _buckets,
-            FLAGS.size, FLAGS.num_layers, FLAGS.max_gradient_norm, FLAGS.batch_size,
-            FLAGS.learning_rate, FLAGS.learning_rate_decay_factor, use_lstm=FLAGS.use_lstm,
+            FLAGS.size, FLAGS.num_layers, FLAGS.max_gradient_norm,
+            FLAGS.batch_size,
+            FLAGS.learning_rate, FLAGS.learning_rate_decay_factor,
+            use_lstm=FLAGS.use_lstm,
             forward_only=forward_only)
 
         ckpt = tf.train.get_checkpoint_state(model_dir)
@@ -88,13 +91,9 @@ class Chatbot():
             model.saver.restore(session, ckpt.model_checkpoint_path)
             _LOGGER.info("Read model parameter succeed!")
         else:
-            raise ValueError("Failed to find legal model checkpoint files in %s" % model_dir)
+            raise ValueError(
+                "Failed to find legal model checkpoint files in %s" % model_dir)
         return model
-
-    # TODO Load and save the total graph not just the exist weight
-    def dump(self, dump_path):
-        actual_path = os.path.join(dump_path, 'test.dump')
-        self.model.saver.save(self.session, save_path=actual_path, global_step=self.model.global_step.eval())
 
     def generate_answer(self, enquiry):
         # Get token-ids for the input sentence.
@@ -106,9 +105,10 @@ class Chatbot():
                          if _buckets[b][0] > len(token_ids)])
         # Get a 1-element batch to feed the sentence to the model.
         encoder_inputs, decoder_inputs, target_weights = self.model.get_batch(
-                {bucket_id: [(token_ids, [])]}, bucket_id)
+            {bucket_id: [(token_ids, [])]}, bucket_id)
         # Get output logits for the sentence.
-        _, _, output_logits = self.model.step(self.session, encoder_inputs, decoder_inputs,
+        _, _, output_logits = self.model.step(self.session, encoder_inputs,
+                                              decoder_inputs,
                                               target_weights, bucket_id, True)
         # This is a greedy decoder - outputs are just argmaxes of output_logits.
         outputs = [int(np.argmax(logit, axis=1)) for logit in output_logits]
@@ -125,6 +125,7 @@ class Chatbot():
 
     def close(self):
         self.session.close()
+
 
 if __name__ == "__main__":
     m = Chatbot(SEQ2SEQ_MODEL_DIR + '/train/')

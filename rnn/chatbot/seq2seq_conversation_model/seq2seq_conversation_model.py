@@ -16,26 +16,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import logging
 import math
 import os
-import random
 import sys
 import time
-import logging
+
 import numpy as np
 import tensorflow as tf
 from six.moves import xrange  # pylint: disable=redefined-builtin
 from tensorflow.python.platform import gfile
-from seq2seq_conversation_model import seq2seq_model, data_utils
-from settings import SEQ2SEQ_MODEL_DIR, SEQ2SEQ_SIZE
 
+from seq2seq_conversation_model import data_utils, seq2seq_model
+from settings import SEQ2SEQ_MODEL_DIR, SEQ2SEQ_SIZE
 
 _LOGGER = logging.getLogger('validation')
 
 
 class FLAGS(object):
     learning_rate = 0.5  # Learning rate.
-    learning_rate_decay_factor= 0.99  # Learning rate decays by this much.
+    learning_rate_decay_factor = 0.99  # Learning rate decays by this much.
     max_gradient_norm = 5.0  # Clip gradients to this norm.
     batch_size = 64  # Batch size to use during training.
     use_lstm = True  # "use lstm cell or not
@@ -49,6 +49,7 @@ class FLAGS(object):
     steps_per_checkpoint = 2  # How many training steps to do per checkpoint.
     decode = False  # Set to True for interactive decoding.
     self_test = False  # Run a self-test if this is set to True.
+
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
@@ -83,8 +84,10 @@ def read_data(source_path, target_path, max_size=None):
                 source_ids = [int(x) for x in source.split()]
                 target_ids = [int(x) for x in target.split()]
                 target_ids.append(data_utils.EOS_ID)
-                for bucket_id, (source_size, target_size) in enumerate(_buckets):
-                    if len(source_ids) < source_size and len(target_ids) < target_size:
+                for bucket_id, (source_size, target_size) in enumerate(
+                        _buckets):
+                    if len(source_ids) < source_size and len(
+                            target_ids) < target_size:
                         data_set[bucket_id].append([source_ids, target_ids])
                         break
                 source, target = source_file.readline(), target_file.readline()
@@ -94,10 +97,11 @@ def read_data(source_path, target_path, max_size=None):
 def create_model(session, forward_only):
     """Create conversation model and initialize or load parameters in session."""
     model = seq2seq_model.Seq2SeqModel(
-            FLAGS.vocab_size, FLAGS.vocab_size, _buckets,
-            FLAGS.size, FLAGS.num_layers, FLAGS.max_gradient_norm, FLAGS.batch_size,
-            FLAGS.learning_rate, FLAGS.learning_rate_decay_factor, use_lstm=FLAGS.use_lstm,
-            forward_only=forward_only)
+        FLAGS.vocab_size, FLAGS.vocab_size, _buckets,
+        FLAGS.size, FLAGS.num_layers, FLAGS.max_gradient_norm, FLAGS.batch_size,
+        FLAGS.learning_rate, FLAGS.learning_rate_decay_factor,
+        use_lstm=FLAGS.use_lstm,
+        forward_only=forward_only)
     ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
     if ckpt and gfile.Exists(ckpt.model_checkpoint_path):
         print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
@@ -112,17 +116,18 @@ def train():
     # Prepare conversation data.
     print("Preparing conversation data in %s" % FLAGS.data_dir)
     enquiry_train, answer_train, enquiry_dev, answer_dev, _ = data_utils.prepare_data(
-            FLAGS.data_dir, FLAGS.vocab_size)
+        FLAGS.data_dir, FLAGS.vocab_size)
     vocab_path = os.path.join(FLAGS.data_dir, "vocab%d" % FLAGS.vocab_size)
     vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
 
     with tf.Session() as sess:
         # Create model.
-        print("Creating %d layers of %d units." % (FLAGS.num_layers, FLAGS.size))
+        print(
+            "Creating %d layers of %d units." % (FLAGS.num_layers, FLAGS.size))
         model = create_model(sess, False)
         # Read data into buckets and compute their sizes.
-        print ("Reading development and training data (limit: %d)."
-               % FLAGS.max_train_data_size)
+        print("Reading development and training data (limit: %d)."
+              % FLAGS.max_train_data_size)
         dev_set = read_data(enquiry_dev, answer_dev)
         train_set = read_data(enquiry_train, answer_train, FLAGS.max_train_data_size)
 
@@ -148,7 +153,7 @@ def train():
             # Get a batch and make a step.
             start_time = time.time()
             encoder_inputs, decoder_inputs, target_weights = model.get_batch(
-                    train_set, bucket_id)
+                train_set, bucket_id)
             _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
                                          target_weights, bucket_id, False)
             step_time += (time.time() - start_time) / FLAGS.steps_per_checkpoint
@@ -160,49 +165,62 @@ def train():
                 log_head = 'current_step: %s' % model.global_step.eval()
                 # Print statistics for the previous epoch.
                 perplexity = math.exp(loss) if loss < 300 else float('inf')
-                print ("global step %d learning rate %.4f step-time %.2f perplexity "
-                       "%.2f" % (model.global_step.eval(), model.learning_rate.eval(),
-                                 step_time, perplexity))
+                print(
+                    "global step %d learning rate %.4f step-time %.2f perplexity "
+                    "%.2f" % (
+                    model.global_step.eval(), model.learning_rate.eval(),
+                    step_time, perplexity))
                 # Decrease learning rate if no improvement was seen over last 3 times.
-                if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
+                if len(previous_losses) > 2 and loss > max(
+                        previous_losses[-3:]):
                     sess.run(model.learning_rate_decay_op)
                 previous_losses.append(loss)
                 # Save checkpoint and zero timer and loss.
-                checkpoint_path = os.path.join(FLAGS.train_dir, "conversation.ckpt")
-                model.saver.save(sess, checkpoint_path, global_step=model.global_step)
+                checkpoint_path = os.path.join(FLAGS.train_dir,
+                                               "conversation.ckpt")
+                model.saver.save(sess, checkpoint_path,
+                                 global_step=model.global_step)
                 step_time, loss = 0.0, 0.0
                 # Run evals on development set and print their perplexity.
                 for bucket_id in xrange(len(_buckets)):
                     encoder_inputs, decoder_inputs, target_weights = model.get_batch(
-                            dev_set, bucket_id)
-                    _, eval_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
-                                                 target_weights, bucket_id, True)
-                    eval_ppx = math.exp(eval_loss) if eval_loss < 300 else float('inf')
-                    print("  eval: bucket %d perplexity %.2f" % (bucket_id, eval_ppx))
+                        dev_set, bucket_id)
+                    _, eval_loss, _ = model.step(sess, encoder_inputs,
+                                                 decoder_inputs,
+                                                 target_weights, bucket_id,
+                                                 True)
+                    eval_ppx = math.exp(
+                        eval_loss) if eval_loss < 300 else float('inf')
+                    print("  eval: bucket %d perplexity %.2f" % (
+                    bucket_id, eval_ppx))
                 # Log the answer of validation set: use 20 enquiries from development set
                 for bucket_group in dev_set:
                     # decode 4 questions in each bucket
                     for pair in bucket_group[:4]:
                         token_ids = pair[0]
-                        log_info = '%s, enquiry: %s' % (log_head, "".join([rev_vocab[inp] for inp in token_ids]))
+                        log_info = '%s, enquiry: %s' % (log_head, "".join(
+                            [rev_vocab[inp] for inp in token_ids]))
                         # Which bucket does it belong to?
-                        bucket_id = min([b for b in xrange(len(_buckets)) 
-                            if _buckets[b][0] > len(token_ids)])
+                        bucket_id = min([b for b in xrange(len(_buckets))
+                                         if _buckets[b][0] > len(token_ids)])
                         # Get a 1-element batch to feed the sentence to the model.
                         encoder_inputs, decoder_inputs, target_weights = model.get_batch(
-                                {bucket_id: [(token_ids,[])]}, bucket_id)
+                            {bucket_id: [(token_ids, [])]}, bucket_id)
                         # Get output logits for the sentence.
-                        _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs,
-                                                         target_weights, bucket_id, True)
+                        _, _, output_logits = model.step(sess, encoder_inputs,
+                                                         decoder_inputs,
+                                                         target_weights,
+                                                         bucket_id, True)
                         # This is a greedy decoder - outputs are just argmaxes of output_logits.
                         # Batch_size = 64, we select the first output_logit
-                        outputs = [int(np.argmax(logit, axis=1)[0]) for logit in output_logits]
+                        outputs = [int(np.argmax(logit, axis=1)[0]) for logit in
+                                   output_logits]
                         # If there is an EOS symbol in outputs, cut them at that point.
                         # if data_utils.EOS_ID in outputs:
                         #    outputs = outputs[:outputs.index(data_utils.EOS_ID)]
                         log_info = '%s, answer: %s' % (log_info, "".join([rev_vocab[output] for output in outputs]))
                         print(log_info)
-                        #_LOGGER.info(log_info)
+                        # _LOGGER.info(log_info)
                 sys.stdout.flush()
 
 
@@ -221,18 +239,23 @@ def decode():
         sentence = sys.stdin.readline()
         while sentence:
             # Get token-ids for the input sentence.
-            token_ids = data_utils.sentence_to_token_ids(sentence, vocab, data_utils.ribosome_tokenizer)
+            token_ids = data_utils.sentence_to_token_ids(sentence, vocab,
+                                                         data_utils.ribosome_tokenizer)
             # Which bucket does it belong to?
             bucket_id = min([b for b in xrange(len(_buckets))
                              if _buckets[b][0] > len(token_ids)])
             # Get a 1-element batch to feed the sentence to the model.
             encoder_inputs, decoder_inputs, target_weights = model.get_batch(
-                    {bucket_id: [(token_ids, [])]}, bucket_id)
-            print (encoder_inputs[0].shape, decoder_inputs[0].shape, type(decoder_inputs), type(decoder_inputs[0]))
-            print (encoder_inputs)
+                {bucket_id: [(token_ids, [])]}, bucket_id)
+            print(encoder_inputs[0].shape, decoder_inputs[0].shape,
+                  type(decoder_inputs), type(decoder_inputs[0]))
+            print(encoder_inputs)
             # Get output logits for the sentence.
-            _, average_perplexity, output_logits = model.step(sess, encoder_inputs, decoder_inputs,
-                                             target_weights, bucket_id, True)
+            _, average_perplexity, output_logits = model.step(sess,
+                                                              encoder_inputs,
+                                                              decoder_inputs,
+                                                              target_weights,
+                                                              bucket_id, True)
             # This is a greedy decoder - outputs are just argmaxes of output_logits.
             outputs = [int(np.argmax(logit, axis=1)) for logit in output_logits]
             # If there is an EOS symbol in outputs, cut them at that point.
@@ -240,7 +263,7 @@ def decode():
                 outputs = outputs[:outputs.index(data_utils.EOS_ID)]
             # Print out response sentence corresponding to outputs.
             print(" ".join([rev_vocab[output] for output in outputs]))
-            print ("answer perplexity: %s " % average_perplexity)
+            print("answer perplexity: %s " % average_perplexity)
             print("> ", end="")
             sys.stdout.flush()
             sentence = sys.stdin.readline()
