@@ -2,14 +2,13 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
 import glob
-import gzip
-import os
 import re
 import sys
-import tarfile
-from six.moves import urllib
+
 from tensorflow.python.platform import gfile
+
 from settings import VOCAB_DICT_FILE
 
 _PAD = "_PAD"
@@ -39,6 +38,8 @@ def basic_tokenizer(sentence):
 # forward maximum matching word segmentation
 _DICT = None
 _MAX_WORD_LENGTH = 0
+
+
 def fmm_tokenizer(sentence):
     global _DICT
     global _MAX_WORD_LENGTH
@@ -85,7 +86,8 @@ def create_vocabulary(vocabulary_path, data_path_patterns, max_vocabulary_size,
     """
     vocab = {}
     if gfile.Exists(vocabulary_path):
-        sys.stderr.write('vocabulary path %s exsit. we will use the exised one\n' % vocabulary_path)
+        sys.stderr.write(
+            'vocabulary path %s exsit. we will use the exised one\n' % vocabulary_path)
         return
     for data_f in glob.glob(data_path_patterns):
         print("Creating vocabulary %s from data %s" % (vocabulary_path, data_f))

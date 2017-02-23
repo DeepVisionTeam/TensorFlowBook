@@ -2,16 +2,15 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-import glob
-import gzip
+
 import os
 import re
 import sys
-import tarfile
-from six.moves import urllib
+
+from seq2seq_conversation_model.tokenizer import UNK_ID, _DIGIT_RE
+from seq2seq_conversation_model.tokenizer import basic_tokenizer, \
+    create_vocabulary, fmm_tokenizer, initialize_vocabulary
 from tensorflow.python.platform import gfile
-from seq2seq_conversation_model.tokenizer import _DIGIT_RE, UNK_ID, EOS_ID, PAD_ID, GO_ID
-from seq2seq_conversation_model.tokenizer import basic_tokenizer, fmm_tokenizer, create_vocabulary, initialize_vocabulary
 
 
 def sentence_to_token_ids(sentence, vocabulary,
@@ -56,7 +55,8 @@ def data_to_token_ids(data_path, target_path, vocabulary_path,
       normalize_digits: Boolean; if true, all digits are replaced by 0s.
     """
     if gfile.Exists(target_path):
-        sys.stderr.write('target path %s already exist! we will use the existed one.\n' % target_path)
+        sys.stderr.write(
+            'target path %s already exist! we will use the existed one.\n' % target_path)
     else:
         print("Tokenizing data in %s" % data_path)
         vocab, _ = initialize_vocabulary(vocabulary_path)
@@ -67,11 +67,14 @@ def data_to_token_ids(data_path, target_path, vocabulary_path,
                     counter += 1
                     if counter % 100000 == 0:
                         print("  tokenizing line %d" % counter)
-                    token_ids = sentence_to_token_ids(line, vocab, tokenizer, normalize_digits)
-                    tokens_file.write(" ".join([str(tok) for tok in token_ids]) + "\n")
+                    token_ids = sentence_to_token_ids(line, vocab, tokenizer,
+                                                      normalize_digits)
+                    tokens_file.write(
+                        " ".join([str(tok) for tok in token_ids]) + "\n")
 
 
-def prepare_data(data_dir, vocabulary_size, train_file='train', dev_file='dev', use_fmm_tokenizer=False):
+def prepare_data(data_dir, vocabulary_size, train_file='train',
+                 dev_file='dev', use_fmm_tokenizer=False):
     """
     prepare dialog data. all the data should be put in the data_dir
     :param data_dir:
@@ -84,19 +87,28 @@ def prepare_data(data_dir, vocabulary_size, train_file='train', dev_file='dev', 
     ttokenizer = fmm_tokenizer if use_fmm_tokenizer else basic_tokenizer
     # Create vocabularies of the appropriate sizes.
     vocab_path = os.path.join(data_dir, "vocab%d" % vocabulary_size)
-    create_vocabulary(vocab_path, data_dir + '/test', vocabulary_size, tokenizer=ttokenizer)
+    create_vocabulary(vocab_path, data_dir + '/test', vocabulary_size,
+                      tokenizer=ttokenizer)
 
     # Create token ids for the training data.
-    enquiry_train_ids_path = os.path.join(data_dir, train_file + (".ids%d.enquiry" % vocabulary_size))
-    answer_train_ids_path = os.path.join(data_dir, train_file + (".ids%d.answer" % vocabulary_size))
-    data_to_token_ids(os.path.join(data_dir, train_file + ".enquiry"), enquiry_train_ids_path, vocab_path, ttokenizer)
-    data_to_token_ids(os.path.join(data_dir, train_file + ".answer"), answer_train_ids_path, vocab_path, ttokenizer)
+    enquiry_train_ids_path = os.path.join(data_dir, train_file + (
+        ".ids%d.enquiry" % vocabulary_size))
+    answer_train_ids_path = os.path.join(data_dir, train_file + (
+        ".ids%d.answer" % vocabulary_size))
+    data_to_token_ids(os.path.join(data_dir, train_file + ".enquiry"),
+                      enquiry_train_ids_path, vocab_path, ttokenizer)
+    data_to_token_ids(os.path.join(data_dir, train_file + ".answer"),
+                      answer_train_ids_path, vocab_path, ttokenizer)
 
     # Create token ids for the development data.
-    enquiry_dev_ids_path = os.path.join(data_dir, dev_file + (".ids%d.enquiry" % vocabulary_size))
-    answer_dev_ids_path = os.path.join(data_dir, dev_file + (".ids%d.answer" % vocabulary_size))
-    data_to_token_ids(os.path.join(data_dir, dev_file + ".enquiry"), enquiry_dev_ids_path, vocab_path, ttokenizer)
-    data_to_token_ids(os.path.join(data_dir, dev_file + ".answer"), answer_dev_ids_path, vocab_path, ttokenizer)
+    enquiry_dev_ids_path = os.path.join(data_dir, dev_file + (
+        ".ids%d.enquiry" % vocabulary_size))
+    answer_dev_ids_path = os.path.join(data_dir, dev_file + (
+        ".ids%d.answer" % vocabulary_size))
+    data_to_token_ids(os.path.join(data_dir, dev_file + ".enquiry"),
+                      enquiry_dev_ids_path, vocab_path, ttokenizer)
+    data_to_token_ids(os.path.join(data_dir, dev_file + ".answer"),
+                      answer_dev_ids_path, vocab_path, ttokenizer)
 
     return (enquiry_train_ids_path, answer_train_ids_path,
             enquiry_dev_ids_path, answer_dev_ids_path,

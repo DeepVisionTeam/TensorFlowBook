@@ -18,7 +18,6 @@ for le in f_enq:
 f_enq.close()
 f_ans.close()
 
-
 w = Workbook()
 ws = w.add_sheet('sheet')
 for i in range(20):
