@@ -2,9 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tclm_reader
 import tensorflow as tf
 from tclm import *
-import tclm_reader
 
 
 def main(_):
@@ -20,11 +20,15 @@ def main(_):
     eval_config.num_steps = 1
 
     with tf.Graph().as_default():
-        initializer = tf.random_uniform_initializer(-config.init_scale, config.init_scale)
+        initializer = tf.random_uniform_initializer(-config.init_scale,
+                                                    config.init_scale)
         with tf.name_scope("Train"):
-            test_input = PTBInput(config=config, data=test_data, name="TestInput")
-            with tf.variable_scope("Model", reuse=None, initializer=initializer):
-                mtest = PTBModel(is_training=True, config=eval_config, input_=test_input)
+            test_input = PTBInput(config=config, data=test_data,
+                                  name="TestInput")
+            with tf.variable_scope("Model", reuse=None,
+                                   initializer=initializer):
+                mtest = PTBModel(is_training=True, config=eval_config,
+                                 input_=test_input)
             tf.summary.scalar("Training Loss", mtest.cost)
             tf.summary.scalar("Learning Rate", mtest.lr)
 

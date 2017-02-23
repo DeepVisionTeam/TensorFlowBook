@@ -1,8 +1,9 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-import tensorflow as tf
+
 import tclm_reader
+import tensorflow as tf
 
 
 class TCReaderTest(tf.test.TestCase):
@@ -16,7 +17,8 @@ class TCReaderTest(tf.test.TestCase):
         raw_data = [4, 3, 2, 1, 0, 5, 6, 1, 1, 1, 1, 0, 3, 4, 1]
         batch_size = 3
         num_steps = 2
-        x, y = tclm_reader.tensorflow_code_producer(raw_data, batch_size, num_steps)
+        x, y = tclm_reader.tensorflow_code_producer(raw_data, batch_size,
+                                                    num_steps)
         with self.test_session() as session:
             coord = tf.train.Coordinator()
             tf.train.start_queue_runners(session, coord=coord)
@@ -36,10 +38,12 @@ class TCReaderTest(tf.test.TestCase):
                 coord.join()
 
     def testTCProducer(self):
-        raw_data = [257, 1, 2, 3, 4, 9, 10, 11, 15, 16, 17, 5, 6, 12, 13, 14, 7, 8, 18, 19, 20, 258]
+        raw_data = [257, 1, 2, 3, 4, 9, 10, 11, 15, 16, 17, 5, 6, 12, 13, 14, 7,
+                    8, 18, 19, 20, 258]
         batch_size = 3
         num_steps = 4
-        x, y = tclm_reader.tensorflow_code_producer(raw_data, batch_size, num_steps)
+        x, y = tclm_reader.tensorflow_code_producer(raw_data, batch_size,
+                                                    num_steps)
         with self.test_session() as session:
             coord = tf.train.Coordinator()
             tf.train.start_queue_runners(session, coord=coord)

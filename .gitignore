@@ -90,3 +90,5 @@ ENV/
 .idea/
 Would skip repository Titanic/
 Would skip repository neural_style/
+
+.DS_Store
