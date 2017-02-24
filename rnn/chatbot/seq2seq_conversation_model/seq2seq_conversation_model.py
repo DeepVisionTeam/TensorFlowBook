@@ -26,8 +26,7 @@ import numpy as np
 import tensorflow as tf
 from six.moves import xrange  # pylint: disable=redefined-builtin
 from tensorflow.python.platform import gfile
-
-from seq2seq_conversation_model import data_utils, seq2seq_model
+from seq2seq_conversation_model import data_utils, tokenizer, seq2seq_model
 from settings import SEQ2SEQ_MODEL_DIR, SEQ2SEQ_SIZE
 
 _LOGGER = logging.getLogger('validation')
@@ -83,7 +82,7 @@ def read_data(source_path, target_path, max_size=None):
                     sys.stdout.flush()
                 source_ids = [int(x) for x in source.split()]
                 target_ids = [int(x) for x in target.split()]
-                target_ids.append(data_utils.EOS_ID)
+                target_ids.append(tokenizer.EOS_ID)
                 for bucket_id, (source_size, target_size) in enumerate(
                         _buckets):
                     if len(source_ids) < source_size and len(

@@ -113,8 +113,8 @@ class Chatbot():
         # This is a greedy decoder - outputs are just argmaxes of output_logits.
         outputs = [int(np.argmax(logit, axis=1)) for logit in output_logits]
         # If there is an EOS symbol in outputs, cut them at that point.
-        if data_utils.EOS_ID in outputs:
-            outputs = outputs[:outputs.index(data_utils.EOS_ID)]
+        if tokenizer.EOS_ID in outputs:
+            outputs = outputs[:outputs.index(tokenizer.EOS_ID)]
 
         # Print out response sentence corresponding to outputs.
         answer = " ".join([self.rev_vocab[output] for output in outputs])
