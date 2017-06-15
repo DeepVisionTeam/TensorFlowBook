@@ -1,5 +1,5 @@
 # TensorFlowBook
 DeepLearning in TensorFlow
 
-<img src="./book_cover.jpeg" width="200">
+<img src="./book_cover.jpeg" width="100">
 
