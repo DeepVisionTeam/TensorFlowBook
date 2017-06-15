@@ -1,4 +1,5 @@
 # TensorFlowBook
 DeepLearning in TensorFlow
 
-![Book Cover](book_cover.jpeg)
+<img src="./book_cover.jpeg" width="500">
+
